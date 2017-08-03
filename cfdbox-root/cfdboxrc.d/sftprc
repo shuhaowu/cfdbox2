@@ -1,0 +1,11 @@
+export SFTP_SERVER="{server}"
+export SFTP_USER="{username}"
+export SFTP_PASSWORD="{password}"
+
+sftp-to-nas() {{
+  expect -c "
+  spawn sftp ${{SFTP_USER}}@${{SFTP_SERVER}}
+  expect \"assword\"
+  send \"$SFTP_PASSWORD\r\"
+  interact "
+}}

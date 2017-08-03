@@ -1,0 +1,55 @@
+---
+- include_vars: "{{ item }}"
+  with_first_found:
+    - secrets.yml
+    - no_secrets.yml
+
+- name: checking if cfdbox exists
+  stat: path="{{ ansible_env['HOME'] }}/cfdbox2"
+  register: p
+
+- name: cloning cfdbox source
+  git: repo=https://github.com/shuhaowu/cfdbox2.git
+       dest="{{ ansible_env['HOME'] }}/cfdbox2"
+       accept_hostkey=yes
+  when: not p.stat.exists
+
+- name: templating cfdbox install config
+  template: src=cfdbox.config.json
+            dest="{{ ansible_env['HOME'] }}/.cfdbox.config.json"
+            mode=0600
+
+- name: templating bootstrap script
+  template: src=bootstrap
+            dest=/tmp/bootstrap
+            mode=0700
+
+- name: running bootstrap
+  shell: /tmp/bootstrap
+  register: bootstrap_root_result
+  ignore_errors: True
+
+- name: fail bootstrap-root if error is not just already installed
+  fail: msg="bootstrap failed, check logs above"
+  when: "bootstrap_root_result.rc != 0 and 'another version already exist' not in bootstrap_root_result.stderr"
+
+- name: downloading extra application sources
+  get_url: url="{{ item['url'] }}"
+           dest="{{ ansible_env['HOME'] }}/support/sources/{{ item['dirname'] }}.tar.gz"
+           sha256sum="{{ item['sha'] }}"
+  with_items: "{{ server_custom_software }}"
+
+- name: installing extra applications
+  source_install: src="{{ ansible_env['HOME'] }}/support/sources/{{ item['dirname'] }}.tar.gz"
+                  src_dirname="{{ item['dirname'] }}"
+                  creates="{{ item['creates'] }}"
+  with_items: "{{ server_custom_software }}"
+
+- name: copy tmux config
+  copy: src=tmux.conf
+        dest="{{ ansible_env['HOME'] }}/.tmux.conf"
+
+- name: running bootstrap cfdbox venv
+  command: "{{ ansible_env['HOME'] }}/cfdbox2/scripts/bootstrap-cfdbox-venv"
+  args:
+    chdir: "{{ ansible_env['HOME'] }}/cfdbox2"

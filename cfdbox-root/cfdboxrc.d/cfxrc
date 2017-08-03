@@ -1,0 +1,4 @@
+export CFX_NODES="{default_nodes}"
+export CFX_PATH="{install_path}"
+export CFX_LICENSE="{license_path}"
+export PATH="$CFX_PATH/bin:$PATH"

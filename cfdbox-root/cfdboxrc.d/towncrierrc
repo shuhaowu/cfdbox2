@@ -1,0 +1,12 @@
+export TOWNCRIER_BASE_URL="{base_url}"
+export TOWNCRIER_AUTH_TOKEN="{authtoken}"
+
+disable-notifiers() {{
+  export NOTIFIERS_DISABLED=1
+  echo "Notifiers disabled"
+}}
+
+enable-notifiers() {{
+  unset NOTIFIERS_DISABLED
+  echo "Notifiers enabled"
+}}

@@ -1,0 +1,20 @@
+for f in ~/cfdboxrc.d/*rc; do
+  source $f
+done
+
+DEFAULT_VENV=$CFDBOX_ROOT/venv
+
+if [ -f $HOME/.default_venv ]; then
+  venv_path=$(cat $HOME/.default_venv)
+  if [ ! -d $venv_path ]; then
+    venv_path=$DEFAULT_VENV
+  fi
+else
+  venv_path=$DEFAULT_VENV
+fi
+
+if [ -z "$VIRTUAL_ENV" ]; then
+  if [ -d $venv_path ]; then
+    source $venv_path/bin/activate
+  fi
+fi

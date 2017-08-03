@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -e
+
+if [ ! -z "$VIRTUAL_ENV" ]; then
+  source {{ ansible_env['HOME'] }}/venv/bin/activate
+  deactivate
+fi
+
+$HOME/cfdbox2/scripts/bootstrap-cfdbox-root -y --reinstall --config {{ ansible_env['HOME'] }}/.cfdbox.config.json

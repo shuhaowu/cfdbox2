@@ -1,0 +1,4 @@
+---
+cfx_nodes: "amd64n1*30,amd64n2*30"
+cfx_license: "1055@134.117.70.208"
+cfx_path: "/usr/local/ansys_inc/v162/CFX"

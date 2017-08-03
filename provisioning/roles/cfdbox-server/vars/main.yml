@@ -1,0 +1,22 @@
+---
+server_custom_software:
+  - url: https://github.com/libevent/libevent/releases/download/release-2.0.22-stable/libevent-2.0.22-stable.tar.gz
+    sha: 71c2c49f0adadacfdbe6332a372c38cf9c8b7895bb73dabeaa53cdcc1d4e1fa3
+    dirname: libevent-2.0.22-stable
+    creates: "{{ ansible_env['HOME'] }}/support/lib/libevent.a"
+  - url: https://github.com/tmux/tmux/releases/download/2.1/tmux-2.1.tar.gz
+    sha: 31564e7bf4bcef2defb3cb34b9e596bd43a3937cad9e5438701a81a5a9af6176
+    creates: "{{ ansible_env['HOME'] }}/support/bin/tmux"
+    dirname: tmux-2.1
+  - url: http://hisham.hm/htop/releases/2.0.0/htop-2.0.0.tar.gz
+    sha: d15ca2a0abd6d91d6d17fd685043929cfe7aa91199a9f4b3ebbb370a2c2424b5
+    creates: "{{ ansible_env['HOME'] }}/support/bin/htop"
+    dirname: htop-2.0.0
+  - url: https://www.python.org/ftp/python/3.5.1/Python-3.5.1.tgz
+    sha: 687e067d9f391da645423c7eda8205bae9d35edc0c76ef5218dcbe4cc770d0d7
+    creates: "{{ ansible_env['HOME'] }}/support/bin/python3"
+    dirname: Python-3.5.1
+  - url: http://gnu.mirror.iweb.com/parallel/parallel-20161122.tar.bz2
+    sha: e2595011494b557822134bd6ad73c8d455764cdf51d148005346a4564626ac7c
+    creates: "{{ ansible_env['HOME'] }}/support/bin/parallel"
+    dirname: parallel-20161122

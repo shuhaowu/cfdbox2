@@ -1,0 +1,8 @@
+export CFDBOX_SUPPORT_ROOT="$CFDBOX_ROOT/support"
+export PATH="$CFDBOX_SUPPORT_ROOT/bin:$PATH"
+export LD_LIBRARY_PATH="$CFDBOX_SUPPORT_ROOT/lib:$LD_LIBRARY_PATH"
+export PKG_CONFIG_PATH="$CFDBOX_SUPPORT_ROOT/lib/pkgconfig:$PKG_CONFIG_PATH"
+export MANPATH="$CFDBOX_SUPPORT_ROOT/share/man:$MANPATH"
+
+# Prevent CTRL-S blowing up everything
+stty -ixon

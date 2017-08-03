@@ -1,0 +1,3 @@
+Host gitlab.com
+RSAAuthentication yes
+IdentityFile ~/.ssh/id_rsa_gitlab_deploy

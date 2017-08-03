@@ -1,0 +1,24 @@
+{
+    "cfx":{
+        "default_nodes":"{{ cfx_nodes }}",
+        "install_path": "{{ cfx_path }}",
+        "license_path": "{{ cfx_license }}"
+    },
+    "nas":{
+        "sftp":{
+            "password": "{{ cfdbox_sftp_password }}",
+            "server":   "{{ cfdbox_sftp_server }}",
+            "username": "{{ cfdbox_sftp_username }}"
+        }
+    },
+    "prefix": "{{ ansible_env['HOME'] }}",
+    "towncrier":{
+        "authtoken": "{{ cfdbox_towncrier_auth_token }}",
+        "base_url":  "{{ cfdbox_towncrier_base_url }}"
+    },
+    "b2": {
+        "account_id": "{{ cfdbox_b2_account_id }}",
+        "application_key": "{{ cfdbox_b2_application_key }}",
+        "bucket_id": "{{ cfdbox_b2_bucket_id }}"
+    }
+}

@@ -1,0 +1,20 @@
+{
+    "cfx":{
+        "default_nodes":"amd64n1*30,amd64n2*30",
+        "install_path":"/usr/local/ansys_inc/v162/CFX",
+        "license_path":"1055@134.117.71.28"
+    },
+    "nas":{
+        "sftp":{
+            "password":"",
+            "server":"",
+            "username":""
+        }
+    },
+    "prefix":"/home/vagrant",
+    "towncrier":{
+        "authtoken":"",
+        "base_url":"",
+        "url":""
+    }
+}

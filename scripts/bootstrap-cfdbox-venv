@@ -1,0 +1,24 @@
+#!/bin/bash
+
+source $HOME/.cfdboxrc
+VENV_PATH=$CFDBOX_ROOT/venv
+
+set -e
+
+if [ -d $VENV_PATH ]; then
+  rm -rf $VENV_PATH
+fi
+
+virtualenv --no-setuptools -p $HOME/support/bin/python3 $VENV_PATH
+source $VENV_PATH/bin/activate
+
+pushd /tmp
+  wget https://bootstrap.pypa.io/get-pip.py
+  python get-pip.py
+  rm get-pip.py
+popd
+
+pip install -r requirements.txt
+
+python --version
+python setup.py develop

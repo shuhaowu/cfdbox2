@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+exec 5>&1 >&2 # duplicate STDOUT as FD#5, redirect STDOUT to STDERR
+
+output() {
+  echo $1 >&5
+}
+
+if [ ! -f $HOME/.cfdboxrc ]; then
+  output '{"failed": true, "msg": "cannot find $HOME/.cfdboxrc"}'
+  exit 1
+fi
+
+source $HOME/.cfdboxrc
+
+if [ -z "$CFDBOX_SUPPORT_ROOT" ]; then
+  output '{"failed": true, "msg": "cannot find $CFDBOX_SUPPORT_ROOT"}'
+  exit 1
+fi
+
+source ${1}
+
+if [ -z "$src" ]; then
+  output '{"failed": true, "msg": "this module needs a src= argument"}'
+  exit 1
+fi
+
+if [ -z "$src_dirname" ]; then
+  output '{"failed": true, "msg": "this module needs a src_dirname= argument"}'
+  exit 1
+fi
+
+if [ -e "$creates" ]; then
+  output '{"changed": false}'
+  exit 0
+fi
+
+display_failed_json() {
+  output "{\"failed\": true, \"msg\": \"something failed during the installation (script line $1)\"}"
+  exit 1
+}
+
+trap 'display_failed_json $LINENO' ERR
+
+pushd $CFDBOX_SUPPORT_ROOT/sources
+  rm -rf $src_dirname
+  tar xvf $src
+  pushd $src_dirname
+    ./configure --prefix=$CFDBOX_SUPPORT_ROOT
+    make
+    make install
+  popd
+popd
+
+output '{"changed": true, "msg": "ok"}'

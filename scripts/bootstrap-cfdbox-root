@@ -1,0 +1,312 @@
+#!/usr/bin/env python
+
+# Note this function MUST be able to execute under both py2 and py3.
+
+from __future__ import print_function
+
+import argparse
+import os
+import json
+import shutil
+import sys
+
+THIS_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
+CFDBOX_ROOT_SRC_DIR = os.path.abspath(os.path.join(THIS_DIRECTORY, "..", "cfdbox-root"))
+
+if os.environ.get("VIRTUAL_ENV"):
+  print("ERROR: please run the command `deactivate` before running bootstrap", file=sys.stderr)
+  sys.exit(1)
+
+
+SHELL_MODIFICATION_FILE = os.path.join(os.environ["HOME"], ".cfdboxrc")
+SHELL_MODIFICATION_FILE_CONTENT = """
+export CFDBOX_ROOT={cfdbox_root}
+if [ -f $CFDBOX_ROOT/cfdboxrc.d/sourceall ]; then
+  source $CFDBOX_ROOT/cfdboxrc.d/sourceall
+fi
+""".strip() + "\n"
+
+
+class WhatTheFailure(RuntimeError):
+  pass
+
+
+def no_validation(x):
+  return True
+
+
+# Format is key => (required, default_value, validation, prompt)
+# required:      boolean
+# default_value: will be filled if not required and not provided
+# validation:    a function taking an argument returning True (valid) or false.
+# prompt:        message to show to the user to prompt for a value
+# transform:     a function to transform a string to another type, like int, or something else
+CONFIG_SPECIFICATION = {
+  "prefix": (True, os.environ["HOME"], os.path.isdir, "Enter the directory you wish cfdbox to be based in", str),
+  "cfx": {
+    "install_path":  (True, "/usr/local/ansys_inc/v162/CFX", lambda x: not x or os.path.isdir(x), "Enter the directory CFX is installed to", str),
+    "default_nodes": (True, "", no_validation, "Enter the default nodes you wish your simulations to run on", str),
+    "license_path":  (True, "", no_validation, "Enter the license path for CFX", str),
+  },
+  "nas": {
+    "sftp": {
+      "server":   (False, "", no_validation, "Enter the server host for SFTP to the NAS", str),
+      "username": (False, "", no_validation, "Enter the server username for SFTP to the NAS", str),
+      "password": (False, "", no_validation, "Enter the server password for SFTP to the NAS", str),
+    }
+  },
+  "towncrier": {
+    "authtoken":  (False, "", no_validation, "Enter the towncrier token", str),
+    "base_url":   (False, "", no_validation, "Enter the towncrier url", str),
+  },
+  "b2": {
+    "account_id":      (False, "", no_validation, "Enter the B2 account id", str),
+    "application_key": (False, "", no_validation, "Enter the B2 application key", str),
+    "bucket_id":       (False, "", no_validation, "Enter the B2 bucket id", str)
+  }
+}
+
+DIRECTORIES_INSTALLED = [
+  "cfdboxrc.d",
+]
+
+
+def fixup_config(config, config_spec, should_prompt, see_optional):
+  for key, spec in config_spec.items():
+    if isinstance(spec, dict):
+      if key not in config:
+        config[key] = {}
+      elif not isinstance(config[key], dict):
+        wtf("{0} must be a dictionary, check your configuration file with the specification".format(key), sysexit=True)
+
+      config[key] = fixup_config(config[key], spec, should_prompt, see_optional)
+    else:
+      while True:  # I miss go to..
+        required, default_value, validation, prompt, transform = spec
+        if not required and not see_optional:
+          config[key] = transform(default_value)
+          break
+
+        value = config.get(key, None) or default_value
+
+        if should_prompt:
+          if value is not None:
+            prompt += " (Default: {0})".format(value or "(empty)")
+
+          if required:
+            prompt += " (Required)"
+          else:
+            prompt += " (Optional)"
+
+          prompt += ": "
+
+          value = raw_input(prompt).strip() or value
+
+        if required and (value == "" or value is None):
+          print("WARN: you must provide a value to this as it is required.")
+          print("")
+          continue
+
+        value = transform(value)
+
+        config[key] = value
+        break
+
+  return config
+
+
+def wtf(msg, sysexit=False):
+  print("ERROR: {0}".format(msg), file=sys.stderr)
+  if sysexit:
+    sys.exit(1)
+  else:
+    raise WhatTheFailure(msg)
+
+
+def try_parsing_configs():
+  parser = argparse.ArgumentParser(description="installs and bootstraps cfdbox-server")
+  parser.add_argument("-y", "--yes",
+                      action="store_true",
+                      help="will skip all interactive and rely ONLY on arguments. only works if --config is specified")
+
+  parser.add_argument("-c", "--config",
+                      default="",
+                      help="the path to an installation configuration file. If -y is specified this will be read and the installation will proceed using the configuration from this file.")
+
+  parser.add_argument("-o", "--see-optional",
+                      action="store_true",
+                      help="prompt for optional arguments in setup")
+
+  parser.add_argument("--reinstall",
+                      action="store_true",
+                      help="this will delete previous installation (except the support subdirectory) and reinstall")
+
+  parser.add_argument("--uninstall", action="store_true",
+                      help="uninstalls cfdbox and cleanup")
+
+  parser.add_argument("--force-support", action="store_true",
+                      help="force deleting the support directory when reinstalling or uninstalling")
+
+  args = parser.parse_args()
+  if args.yes and not os.path.isfile(args.config):
+    wtf("{0} must be a valid file".format(parser.config), sysexit=True)
+
+  config = {}
+  if args.yes:
+    with open(args.config) as f:
+      config = json.load(f)
+
+  if not args.yes:
+    print("============")
+    print("CFDBOX SETUP")
+    print("============")
+    print("")
+    print("Please consult https://gitlab.com/shuhao/cfdbox and")
+    print("https://gitlab.com/shuhao/cfddocs for source code and generic documentations.")
+    print("")
+    print("A series of questions will be asked about configuration of this environment.")
+    print("If you do not understand a question and a default value is provided or")
+    print("if it is not required, just leave it as blank.")
+    print("")
+    print("Required configuration values usually also have a default and they are")
+    print("usually good enough. If you don't quite understand it, just use the default.")
+    print("")
+    print("Press enter to continue. If you made a mistake, press CTRL+C to stop.")
+    print("")
+    raw_input("")
+
+  config = fixup_config(config, CONFIG_SPECIFICATION, not args.yes, args.see_optional)
+
+  print("Final configuration is:")
+  print(json.dumps(config, sort_keys=True, indent=4, separators=(",", ":")))
+  print("")
+  if not args.yes and (raw_input("Is this correct? [Y/n] ").strip().lower() or "y") != "y":
+    print("Quitting... You can restart this program to try again.")
+    sys.exit(1)
+
+  # Check if we need to remove the installed version and reinstall
+  if os.path.exists(os.path.join(config["prefix"], "cfdboxrc.d")):
+    if args.reinstall:
+      print("WARN: removing previous installation")
+      for d in DIRECTORIES_INSTALLED:
+        d = os.path.join(config["prefix"], d)
+        if os.path.isdir(d):
+          print("WARN: removing {0}".format(d))
+          shutil.rmtree(d)
+
+      if args.force_support:
+        d = os.path.join(config["prefix"], "support")
+        print("WARN: removing {0}".format(d))
+        shutil.rmtree(d)
+
+    else:
+      print("ERROR: another version already exist. use --reinstall to reinstall", file=sys.stderr)
+      sys.exit(1)
+
+  # Assume a default configuration to write to
+  if not args.config:
+    args.config = os.path.join(os.environ["HOME"], ".cfdbox.config.json")
+
+  print("Writing settings to {0}".format(args.config))
+  with open(args.config, "w") as f:
+    json.dump(config, f, sort_keys=True, indent=4, separators=(",", ":"))
+
+  return args, config
+
+
+def template_file(path, data):
+  with open(path, "r+") as f:
+    content = f.read()
+    content = content.format(**data)
+    f.seek(0)
+    f.write(content)
+    f.truncate()
+
+
+def template_rc_file(root, filename, config):
+  template_file(os.path.join(root, "cfdboxrc.d", filename), config)
+
+
+def setup_cfx(root, key, cfx_config):
+  template_rc_file(root, "cfxrc", cfx_config)
+
+
+def setup_nas(root, key, nas_config):
+  template_rc_file(root, "sftprc", nas_config["sftp"])
+
+
+def setup_towncrier(root, key, towncrier_config):
+  template_rc_file(root, "towncrierrc", towncrier_config)
+
+
+def setup_b2(root, key, b2_config):
+  template_rc_file(root, "b2rc", b2_config)
+
+
+def setup_generic(cfdbox_root, args):
+  print("Installing cfdbox to {0}".format(cfdbox_root))
+  # Not the most efficient use of code, but it's only like in two places
+  for d in DIRECTORIES_INSTALLED:
+    target = os.path.join(cfdbox_root, d)
+    print("copying to {0}".format(target))
+    shutil.copytree(os.path.join(CFDBOX_ROOT_SRC_DIR, d), target, symlinks=True)
+
+  # We don't touch the support dir if not forced as users can install custom
+  # programs under there like tmux
+  support_dir = os.path.join(cfdbox_root, "support")
+  if not os.path.exists(support_dir) or args.force_support:
+    shutil.copytree(os.path.join(CFDBOX_ROOT_SRC_DIR, "support"), support_dir, symlinks=True)
+    print("copying to {0}".format(support_dir))
+  else:
+    print("WARN: skipping support dir as it already exists...")
+
+  # For security reasons, we must set the permission of all rc files to 0600
+  rcdir = os.path.join(cfdbox_root, "cfdboxrc.d")
+  for f in os.listdir(rcdir):
+    f = os.path.join(rcdir, f)
+    os.chmod(f, 0o600)
+
+  os.chmod(rcdir, 0o700)
+
+  tmp_dir = os.path.join(cfdbox_root, "tmp")
+  if not os.path.exists(tmp_dir):
+    os.mkdir(tmp_dir)
+
+
+def undefined_setup(root, key, config):
+  print("WARN: ignored unknown key '{0}'".format(key))
+
+
+def main():
+  args, config = try_parsing_configs()
+
+  cfdbox_root = config.pop("prefix")
+  with open(SHELL_MODIFICATION_FILE, "w") as f:
+    f.write(SHELL_MODIFICATION_FILE_CONTENT.format(cfdbox_root=cfdbox_root))
+
+  with open(os.path.join(os.environ["HOME"], ".bashrc"), "r+") as f:
+    bashrc = f.read()
+    expected_line = "source {0}".format(SHELL_MODIFICATION_FILE)
+    if expected_line not in bashrc:
+      bashrc += "\n\n"
+      bashrc += expected_line
+      f.seek(0)
+      f.write(bashrc)
+      f.truncate()
+
+  setup_generic(cfdbox_root, args)
+
+  for key in config:
+    setup_func = globals().get("setup_{0}".format(key), undefined_setup)
+    setup_func(cfdbox_root, key, config[key])
+
+  print("")
+  print("")
+  print("BASIC SETUP COMPLETE!")
+  print("To ensure all settings take effect, run `source {0}`".format(SHELL_MODIFICATION_FILE))
+  print("")
+  print("You still need to install python 3 into support, and then setup venv")
+
+
+if __name__ == "__main__":
+  main()

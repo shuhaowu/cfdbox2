@@ -1,0 +1,9 @@
+[amd64]
+amd64 cfx_nodes=amd64n1*30,amd64n2*30
+
+[amd32n2]
+amd32n2 cfx_nodes=amd32n2*15
+
+[amd32n1]
+amd32n1 cfx_nodes=amd32n1*15
+
