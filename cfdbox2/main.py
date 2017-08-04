@@ -15,7 +15,7 @@ def main(argv=sys.argv):
     help(argv)
     sys.exit(0)
 
-  logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname).1s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.DEBUG)
+  logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname).1s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
 
   app = argv[1]
   argv = argv[1:]
