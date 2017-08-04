@@ -8,4 +8,4 @@ fi
 set -x
 
 git archive --prefix=cfdbox2/ --format=tar.gz HEAD | ssh $1 'tar -C $HOME -xvzf -'
-ssh $1 'cd $HOME/cfdbox2 && python setup.py develop'
+# ssh $1 'cd $HOME/cfdbox2 && python setup.py develop'

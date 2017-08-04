@@ -16,6 +16,7 @@ def main(argv=sys.argv):
     sys.exit(0)
 
   logging.basicConfig(format="[%(asctime)s][%(name)s][%(levelname).1s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S", level=logging.INFO)
+  logging.getLogger("paramiko").setLevel(logging.WARNING)
 
   app = argv[1]
   argv = argv[1:]

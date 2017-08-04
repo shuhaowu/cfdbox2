@@ -15,18 +15,25 @@ def available():
   return os.environ.get("SFTP_SERVER") and os.environ.get("SFTP_USER") and os.environ.get("SFTP_PASSWORD")
 
 
-def path_exists(path):
-  exists = True
-  with client() as c:
+# TODO: therem ust be a better way to write this function
+def path_exists(path, c=None):
+  def exists(c):
+    ex = True
     try:
       c.stat(path)
     except IOError as e:
       if e.errno == errno.ENOENT:
-        exists = False
+        ex = False
       else:
         raise e
 
-  return exists
+    return ex
+
+  if c is None:
+    with client() as c:
+      return exists(c)
+  else:
+    return exists(c)
 
 
 @contextmanager

@@ -72,12 +72,17 @@ class ExportCgns(object):
     except ValueError:
       cmdline.fatal("timesteps must be in standard format")
 
-    for t in known_args.timesteps:
-      p = os.path.join(known_args.trn_directory, "{}.trn".format(t))
-      if not known_args.sftp_trn and not os.path.exists(p):
-        cmdline.fatal("{} is not valid locally".format(p))
-      elif known_args.sftp_trn and not sftp.path_exists(p):
-        cmdline.fatal("{} is not valid on sftp".format(p))
+    if not known_args.sftp_trn:
+      for t in known_args.timesteps:
+        p = os.path.join(known_args.trn_directory, "{}.trn".format(t))
+        if not os.path.exists(p):
+          cmdline.fatal("{} is not valid locally".format(p))
+    else:
+      with sftp.client() as c:
+        for t in known_args.timesteps:
+          p = os.path.join(known_args.trn_directory, "{}.trn".format(t))
+          if not sftp.path_exists(p, c):
+            cmdline.fatal("{} is not valid on sftp".format(p))
 
     app = cls(known_args, extra_args)
     app.run()
@@ -109,9 +114,8 @@ class ExportCgns(object):
     self.basedir = os.path.join(self.args.local_tmp_dir, "{}-{}".format(jobname, timestamp))
     self.logger.info("run basedir: {}".format(self.basedir))
 
-    utils.mkdir_p(self.basedir)
-
     self.trn_path = os.path.join(self.basedir, jobname)
+    utils.mkdir_p(self.trn_path)
     self.res_path = os.path.join(self.basedir, os.path.basename(self.args.res_file))
 
     if not self.args.sftp_trn:
@@ -129,7 +133,8 @@ class ExportCgns(object):
 
     if not self.args.export_dir:
       self.args.export_dir = os.path.join(self.basedir, "cgns-exports")
-      utils.mkdir_p(self.args.export_dir)
+
+    utils.mkdir_p(self.args.export_dir)
 
     self.logger.info("export dir will be: {}".format(self.args.export_dir))
 
@@ -141,19 +146,27 @@ class ExportCgns(object):
       self.logger.info("downloading {} -> {}".format(sftp_path, local_path))
       c.get(sftp_path, local_path)
 
+  def _download_res(self):
+    sftp_path = self.args.res_file
+    local_path = self.res_path
+
+    with sftp.client() as c:
+      self.logger.info("downloading {} -> {}".format(sftp_path, local_path))
+      c.get(sftp_path, local_path)
+
   def _export(self, t):
     t = str(t)
     cmd = ["cfx5export", "-cgns", "-out", os.path.join(self.args.export_dir, t), "-t", t]
     cmd.extend(self.extra_args)
     cmd.append(self.res_path)
     self.logger.info(cmd)
-    subprocess.run(cmd)
+    subprocess.check_call(cmd)
 
   def _compress(self, t):
     t = str(t)
     cmd = ["gzip", "{}.cgns".format(os.path.join(self.args.export_dir, t))]
     self.logger.info(cmd)
-    subprocess.run(cmd)
+    subprocess.check_call(cmd)
 
   def _upload(self, t):
     raise NotImplementedError
