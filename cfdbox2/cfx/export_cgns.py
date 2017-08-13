@@ -99,6 +99,7 @@ class ExportCgns(object):
         self._download(t)
 
       self._export(t)
+      self._delete_trn(t)
 
       if self.args.gzip_export:
         self._compress(t)
@@ -161,6 +162,11 @@ class ExportCgns(object):
     cmd.append(self.res_path)
     self.logger.info(cmd)
     subprocess.check_call(cmd)
+
+  def _delete_trn(self, t):
+    filename = "{}.trn".format(t)
+    local_path = os.path.join(self.trn_path, filename)
+    os.remove(local_path)
 
   def _compress(self, t):
     t = str(t)
